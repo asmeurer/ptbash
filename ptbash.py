@@ -39,9 +39,12 @@ def git_prompt():
     gitprompt = os.environ.get("GIT_PROMPT_FILE")
     if not gitprompt:
         return ''
+    # Make sure these are exported so that they are inherited by ptbash.
+    GIT_ENVS = {k: v for k, v in os.environ.items() if
+                k.startswith("GIT_PS1")}
     p = subprocess.run(
         ['bash', '-c', f'source {gitprompt};echo $(__git_ps1)'],
-        stdout=subprocess.PIPE, encoding='utf-8')
+        stdout=subprocess.PIPE, encoding='utf-8', env=GIT_ENVS)
     return p.stdout.strip()
 
 def ps1():
