@@ -1,6 +1,6 @@
 import sys
 
-from pexpect import spawn
+from pexpect import spawn, EOF
 from prompt_toolkit import PromptSession
 
 def run():
@@ -14,8 +14,8 @@ def run():
 
     session = PromptSession()
     def expect_prompt():
-        bash.expect_exact(default_bash_prompt)
-        return True
+        res = bash.expect_exact([default_bash_prompt, EOF])
+        return res == 0
 
     while expect_prompt(): # retcode := bash.poll() is not None:
         try:
