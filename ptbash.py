@@ -23,7 +23,7 @@ async def run():
     # We need to connect bash to a pseudo-terminal to trick it into making the
     # output unbuffered.
     # TODO: Figure out how to pipe stdout and stderr.
-    bash_args = ['script', '-q', '/dev/null', 'bash', '--noediting', '--noprofile', '--norc']
+    bash_args = ['bash', '--noediting', '--noprofile', '--norc']
     env = os.environ.copy()
     env['PS1'] = ''
 
