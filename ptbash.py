@@ -7,8 +7,6 @@ import time
 
 import trio
 
-from pexpect import spawn, EOF
-
 from pygments.lexers.shell import BashLexer
 from pygments.styles import get_style_by_name
 from pygments.token import Token
