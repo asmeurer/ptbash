@@ -5,6 +5,8 @@ import subprocess
 import threading
 import time
 
+import trio
+
 from pexpect import spawn, EOF
 
 from pygments.lexers.shell import BashLexer
@@ -19,33 +21,30 @@ from prompt_toolkit.formatted_text import PygmentsTokens
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
-def run():
+async def run():
     # We need to connect bash to a pseudo-terminal to trick it into making the
     # output unbuffered.
     # TODO: Figure out how to pipe stdout and stderr.
-    bash_args = ['--noediting', '--noprofile', '--norc']
+    bash_args = ['script', '-q', '/dev/null', 'bash', '--noediting', '--noprofile', '--norc']
     env = os.environ.copy()
-    if "PS1" in env:
-        del env['PS1']
-    bash = spawn('bash', bash_args, env=env)
-    bash.setecho(False)
-    default_bash_prompt = r'bash-\d\.\d\$ '
+    env['PS1'] = ''
 
     session = PromptSession(lexer=PygmentsLexer(BashLexer),
                             style=style_from_pygments_cls(get_style_by_name('monokai')))
-    def expect_prompt():
-        res = bash.expect([default_bash_prompt, EOF])
-        return res == 0
+
 
     setup_git_prompt(session)
-    while expect_prompt(): # retcode := bash.poll() is not None:
+
+    async with await trio.open_process(bash_args, stdin=subprocess.PIPE,
+                                         env=env) as process:
+        stdin = process.stdin
         try:
-            print(bash.before.decode('utf-8'), end='')
-            command = session.prompt(ps1())
-            bash.send(command.encode('utf-8') + b'\n')
+            while True:
+                command = session.prompt(ps1())
+                await stdin.send_all(command.encode('utf-8') + b'\n')
         except EOFError:
-            bash.sendeof()
-    sys.exit(bash.exitstatus)
+            process.terminate
+    sys.exit(process.returncode)
 
 def git_prompt():
     gitprompt = os.environ.get("GIT_PROMPT_FILE")
@@ -92,4 +91,4 @@ def setup_git_prompt(session):
     t.start()
 
 if __name__ == '__main__':
-    run()
+    trio.run(run)
