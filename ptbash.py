@@ -6,7 +6,12 @@ import time
 
 from pexpect import spawn, EOF
 
+from pygments.lexers.shell import BashLexer
+from pygments.styles import get_style_by_name
+
 from prompt_toolkit import PromptSession
+from prompt_toolkit.lexers import PygmentsLexer
+from prompt_toolkit.styles import style_from_pygments_cls
 
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
@@ -20,7 +25,8 @@ def run():
     bash.setecho(False)
     default_bash_prompt = 'bash-3.2$ '
 
-    session = PromptSession()
+    session = PromptSession(lexer=PygmentsLexer(BashLexer),
+                            style=style_from_pygments_cls(get_style_by_name('monokai')))
     def expect_prompt():
         res = bash.expect_exact([default_bash_prompt, EOF])
         return res == 0
