@@ -6,6 +6,7 @@ import threading
 import time
 
 import trio
+import trio_asyncio
 
 from pygments.lexers.shell import BashLexer
 from pygments.styles import get_style_by_name
@@ -34,13 +35,26 @@ async def run():
     setup_git_prompt(session)
 
     async with await trio.open_process(bash_args, stdin=subprocess.PIPE,
-                                         env=env) as process:
+                                       stdout=subprocess.PIPE,
+                                       stderr=subprocess.STDOUT,
+                                       env=env) as process:
         stdin = process.stdin
-        await stdin.send_all(b'stty -echo\n')
+        stdout = process.stdout
+        async def _write_stdout():
+            sys.stdout.buffer.write(await stdout.receive_some())
+        # stderr = process.stderr
+        # async def _write_stderr():
+        #     sys.stderr.buffer.write(await stderr.receive_some())
+        async def _write_stdin(command):
+            await stdin.send_all(command.encode('utf-8') + b'\n')
         try:
             while True:
-                command = session.prompt(ps1())
-                await stdin.send_all(command.encode('utf-8') + b'\n')
+                command = await trio_asyncio.aio_as_trio(session.prompt_async)(ps1())
+                # command = session.prompt(ps1())
+                async with trio.open_nursery() as nursery:
+                    nursery.start_soon(_write_stdout)
+                    # nursery.start_soon(_write_stderr)
+                    nursery.start_soon(_write_stdin, command)
         except EOFError:
             process.terminate()
     sys.exit(process.returncode)
@@ -90,4 +104,4 @@ def setup_git_prompt(session):
     t.start()
 
 if __name__ == '__main__':
-    trio.run(run)
+    trio_asyncio.run(run)
