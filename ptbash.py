@@ -22,7 +22,10 @@ def run():
     # output unbuffered.
     # TODO: Figure out how to pipe stdout and stderr.
     bash_args = ['--noediting', '--noprofile', '--norc']
-    bash = spawn('bash', bash_args, env={})
+    env = os.environ.copy()
+    if "PS1" in env:
+        del env['PS1']
+    bash = spawn('bash', bash_args, env=env)
     bash.setecho(False)
     default_bash_prompt = 'bash-3.2$ '
 
