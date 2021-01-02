@@ -27,12 +27,12 @@ def run():
         del env['PS1']
     bash = spawn('bash', bash_args, env=env)
     bash.setecho(False)
-    default_bash_prompt = 'bash-3.2$ '
+    default_bash_prompt = r'bash-\d\.\d\$ '
 
     session = PromptSession(lexer=PygmentsLexer(BashLexer),
                             style=style_from_pygments_cls(get_style_by_name('monokai')))
     def expect_prompt():
-        res = bash.expect_exact([default_bash_prompt, EOF])
+        res = bash.expect([default_bash_prompt, EOF])
         return res == 0
 
     setup_git_prompt(session)
