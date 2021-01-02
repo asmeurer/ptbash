@@ -9,10 +9,12 @@ from pexpect import spawn, EOF
 
 from pygments.lexers.shell import BashLexer
 from pygments.styles import get_style_by_name
+from pygments.token import Token
 
 from prompt_toolkit import PromptSession
 from prompt_toolkit.lexers import PygmentsLexer
 from prompt_toolkit.styles import style_from_pygments_cls
+from prompt_toolkit.formatted_text import PygmentsTokens
 
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
@@ -58,7 +60,8 @@ def git_prompt():
     return p.stdout.strip()
 
 def ps1():
-    return git_prompt() + '$ '
+    return PygmentsTokens([(Token.Generic.Strong, git_prompt()),
+                           (Token.Generic.Prompt, '$ ')])
 
 def setup_git_prompt(session):
     # TODO: Handle being in a subdirectory
