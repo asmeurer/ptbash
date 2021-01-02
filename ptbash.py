@@ -38,6 +38,7 @@ async def run():
     async with await trio.open_process(bash_args, stdin=subprocess.PIPE,
                                          env=env) as process:
         stdin = process.stdin
+        await stdin.send_all(b'stty -echo\n')
         try:
             while True:
                 command = session.prompt(ps1())
