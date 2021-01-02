@@ -43,7 +43,7 @@ async def run():
                 command = session.prompt(ps1())
                 await stdin.send_all(command.encode('utf-8') + b'\n')
         except EOFError:
-            process.terminate
+            process.terminate()
     sys.exit(process.returncode)
 
 def git_prompt():
