@@ -15,6 +15,10 @@ from prompt_toolkit.lexers import PygmentsLexer
 from prompt_toolkit.styles import style_from_pygments_cls
 from prompt_toolkit.formatted_text import PygmentsTokens
 from prompt_toolkit.patch_stdout import patch_stdout
+from prompt_toolkit.keys import Keys
+from prompt_toolkit.key_binding import KeyBindings
+from prompt_toolkit.key_binding.bindings.named_commands import accept_line
+from prompt_toolkit.filters import in_paste_mode
 
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
@@ -27,8 +31,22 @@ async def run():
     env = os.environ.copy()
     env['PS1'] = ''
 
+    key_bindings = KeyBindings()
+
+    key_bindings.add('enter')(accept_line)
+
+    @key_bindings.add(Keys.Escape, 'enter')
+    def _newline(event):
+        """
+        Newline (in case of multiline input.
+        """
+        event.current_buffer.newline(copy_margin=not in_paste_mode())
+
     session = PromptSession(lexer=PygmentsLexer(BashLexer),
-                            style=style_from_pygments_cls(get_style_by_name('monokai')))
+                            style=style_from_pygments_cls(get_style_by_name('monokai')),
+                            multiline=True,
+                            prompt_continuation=ps2(),
+                            key_bindings=key_bindings)
 
 
     git_watcher = setup_git_prompt(session)
@@ -84,6 +102,9 @@ def git_prompt():
 def ps1():
     return PygmentsTokens([(Token.Generic.Strong, git_prompt()),
                            (Token.Generic.Prompt, '$ ')])
+
+def ps2():
+    return PygmentsTokens([(Token.Generic.Prompt, os.environ.get('PS2', '> '))])
 
 def setup_git_prompt(session):
     # TODO: Handle being in a subdirectory
