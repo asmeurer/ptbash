@@ -41,20 +41,27 @@ async def run():
         stdin = process.stdin
         stdout = process.stdout
         async def _write_stdout():
-            sys.stdout.buffer.write(await stdout.receive_some())
+            while True:
+                sys.stdout.buffer.write(await stdout.receive_some())
         # stderr = process.stderr
         # async def _write_stderr():
         #     sys.stderr.buffer.write(await stderr.receive_some())
-        async def _write_stdin(command):
-            await stdin.send_all(command.encode('utf-8') + b'\n')
-        try:
+        async def _write_stdin(receive_channel):
+            while True:
+                async for value in receive_channel:
+                    await stdin.send_all(value)
+        async def _get_command(send_channel):
             while True:
                 command = await trio_asyncio.aio_as_trio(session.prompt_async)(ps1())
+                await send_channel.send(command.encode('utf-8') + b'\n')
+        try:
+            async with trio.open_nursery() as nursery:
+                send_channel, receive_channel = trio.open_memory_channel(0)
                 # command = session.prompt(ps1())
-                async with trio.open_nursery() as nursery:
-                    nursery.start_soon(_write_stdout)
-                    # nursery.start_soon(_write_stderr)
-                    nursery.start_soon(_write_stdin, command)
+                nursery.start_soon(_write_stdout)
+                nursery.start_soon(_get_command, send_channel)
+                # nursery.start_soon(_write_stderr)
+                nursery.start_soon(_write_stdin, receive_channel)
         except EOFError:
             process.terminate()
     sys.exit(process.returncode)
