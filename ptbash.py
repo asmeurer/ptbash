@@ -2,8 +2,6 @@
 import os
 import sys
 import subprocess
-import threading
-import time
 
 import trio
 import trio_asyncio
