@@ -16,6 +16,7 @@ from prompt_toolkit import PromptSession
 from prompt_toolkit.lexers import PygmentsLexer
 from prompt_toolkit.styles import style_from_pygments_cls
 from prompt_toolkit.formatted_text import PygmentsTokens
+from prompt_toolkit.patch_stdout import patch_stdout
 
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
@@ -41,8 +42,9 @@ async def run():
         stdin = process.stdin
         stdout = process.stdout
         async def _write_stdout():
-            while True:
-                sys.stdout.buffer.write(await stdout.receive_some())
+            with patch_stdout(raw=True):
+                while True:
+                    sys.stdout.write((await stdout.receive_some()).decode('utf-8'))
         # stderr = process.stderr
         # async def _write_stderr():
         #     sys.stderr.buffer.write(await stderr.receive_some())
