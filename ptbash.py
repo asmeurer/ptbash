@@ -33,7 +33,7 @@ async def run():
                             style=style_from_pygments_cls(get_style_by_name('monokai')))
 
 
-    setup_git_prompt(session)
+    git_watcher = setup_git_prompt(session)
 
     async with await trio.open_process(bash_args, stdin=subprocess.PIPE,
                                        stdout=subprocess.PIPE,
@@ -66,6 +66,7 @@ async def run():
                 nursery.start_soon(_get_command, send_channel)
                 # nursery.start_soon(_write_stderr)
                 nursery.start_soon(_write_stdin, receive_channel)
+                nursery.start_soon(git_watcher)
         except EOFError:
             process.terminate()
     sys.exit(process.returncode)
@@ -100,19 +101,18 @@ def setup_git_prompt(session):
         session.message = ps1()
         session.app.invalidate()
 
-    def watch():
+    async def watch():
         observer = Observer()
         observer.schedule(Handler(), git_dir)
         observer.start()
         try:
             while True:
-                time.sleep(1)
+                await trio.sleep(1)
         finally:
             observer.stop()
             observer.join()
 
-    t = threading.Thread(target=watch)
-    t.start()
+    return watch
 
 if __name__ == '__main__':
     trio_asyncio.run(run)
