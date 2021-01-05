@@ -47,13 +47,15 @@ async def run():
         # async def _write_stderr():
         #     sys.stderr.buffer.write(await stderr.receive_some())
         async def _write_stdin(receive_channel):
-            while True:
-                async for value in receive_channel:
-                    await stdin.send_all(value)
+            async with receive_channel:
+                while True:
+                    async for value in receive_channel:
+                        await stdin.send_all(value)
         async def _get_command(send_channel):
-            while True:
-                command = await trio_asyncio.aio_as_trio(session.prompt_async)(ps1())
-                await send_channel.send(command.encode('utf-8') + b'\n')
+            async with send_channel:
+                while True:
+                    command = await trio_asyncio.aio_as_trio(session.prompt_async)(ps1())
+                    await send_channel.send(command.encode('utf-8') + b'\n')
         try:
             async with trio.open_nursery() as nursery:
                 send_channel, receive_channel = trio.open_memory_channel(0)
