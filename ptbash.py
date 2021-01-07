@@ -2,9 +2,15 @@
 import os
 import sys
 import subprocess
+import warnings
 
 import trio
-import trio_asyncio
+with warnings.catch_warnings():
+    warnings.filterwarnings('ignore', category=trio.TrioDeprecationWarning)
+    import trio_asyncio
+
+import ptyprocess
+import pexpect
 
 from pygments.lexers.shell import BashLexer
 from pygments.styles import get_style_by_name
