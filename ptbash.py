@@ -10,7 +10,6 @@ with warnings.catch_warnings():
     import trio_asyncio
 
 import ptyprocess
-import pexpect
 
 from pygments.lexers.shell import BashLexer
 from pygments.styles import get_style_by_name
@@ -57,16 +56,14 @@ async def run():
 
     git_watcher = setup_git_prompt(session)
 
-    async with await trio.open_process(bash_args, stdin=subprocess.PIPE,
-                                       stdout=subprocess.PIPE,
-                                       stderr=subprocess.STDOUT,
-                                       env=env) as process:
-        stdin = process.stdin
-        stdout = process.stdout
+    try:
+        process = ptyprocess.PtyProcess.spawn(bash_args, env=env, echo=False)
+        iostream = trio.lowlevel.FdStream(process.fd)
+
         async def _write_stdout():
             with patch_stdout(raw=True):
                 while True:
-                    sys.stdout.write((await stdout.receive_some()).decode('utf-8'))
+                    sys.stdout.write((await iostream.receive_some()).decode('utf-8'))
         # stderr = process.stderr
         # async def _write_stderr():
         #     sys.stderr.buffer.write(await stderr.receive_some())
@@ -74,7 +71,7 @@ async def run():
             async with receive_channel:
                 while True:
                     async for value in receive_channel:
-                        await stdin.send_all(value)
+                        await iostream.send_all(value)
         async def _get_command(send_channel):
             async with send_channel:
                 while True:
@@ -83,7 +80,6 @@ async def run():
         try:
             async with trio.open_nursery() as nursery:
                 send_channel, receive_channel = trio.open_memory_channel(0)
-                # command = session.prompt(ps1())
                 nursery.start_soon(_write_stdout)
                 nursery.start_soon(_get_command, send_channel)
                 # nursery.start_soon(_write_stderr)
@@ -91,7 +87,9 @@ async def run():
                 nursery.start_soon(git_watcher)
         except EOFError:
             process.terminate()
-    sys.exit(process.returncode)
+    finally:
+        process.terminate()
+        sys.exit(process.exitstatus)
 
 def git_prompt():
     gitprompt = os.environ.get("GIT_PROMPT_FILE")
